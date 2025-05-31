@@ -24,6 +24,7 @@ google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
     logger.warning("GOOGLE_API_KEY not found in environment variables.")
 
+
 def load_pdf_document(file_path: str) -> List[Document]:
     logger.info(f"Loading PDF document from: {file_path}")
     loader = PyPDFLoader(file_path)
@@ -80,7 +81,7 @@ def embed_data(split_docs: List[Document], model_name="gemini",mode="pdf"):
     embedding_model = None  
     if model_name == "gemini":
         # Load the Gemini model
-        embedding_model= GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        embedding_model= GoogleGenerativeAIEmbeddings(model="models/text-embedding-004",google_api_key=google_api_key)
 
 
     elif model_name == "huggingface":
@@ -114,7 +115,7 @@ def retrieve_contextual_data(query: str, mode: str, llm_instance: Any) -> List[D
 
     
     try:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key="AIzaSyDUyGcpuxX43s9nUHvv0dOWgAfsLuU3khs")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=google_api_key)
     except Exception as e:
         logger.error(f"Failed to initialize GoogleGenerativeAIEmbeddings in retrieve_contextual_data: {e}")
         # Consider raising HTTPException or returning an empty list with an error message.
