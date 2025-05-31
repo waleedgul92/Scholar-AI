@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResLLM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --body-bg: #eef2f7; --container-bg: #ffffff; --header-footer-bg: #f8f9fa;
+            --text-primary: #333; --text-secondary: #495057; --text-muted: #6c757d;
+            --text-light: #ffffff; --border-color: #e9ecef; --border-input: #ced4da;
+            --border-input-focus: #80bdff; --primary-accent: #007bff;
+            --primary-accent-hover: #0056b3; --message-sent-bg: #007bff;
+            --message-received-bg: #e9ecef; --shadow-color: rgba(0, 0, 0, 0.1);
+            --icon-color: #6c757d; --icon-color-hover: #007bff; --avatar-bg: #007bff;
+            --avatar-text: #ffffff; --input-bg: #ffffff;
+            --select-arrow-fill: '%236c757d';
+            --popup-bg: rgba(40, 40, 40, 0.85);
+            --popup-text: #ffffff;
+            --modal-overlay-bg: rgba(0, 0, 0, 0.6);
+            --modal-content-bg: #ffffff;
+            --paper-button-bg: #6c757d; --paper-button-hover-bg: #5a6268;
+            --like-button-bg: #28a745; --like-button-hover-bg: #218838;
+            --dislike-button-bg: #dc3545; --dislike-button-hover-bg: #c82333;
+            --retry-button-bg: #ffc107; --retry-button-hover-bg: #e0a800; --retry-button-text: #343a40;
+        }
+        body.dark-mode {
+            --body-bg: #1a1d21; --container-bg: #2c2f33; --header-footer-bg: #23272a;
+            --text-primary: #e0e0e0; --text-secondary: #b0b3b8; --text-muted: #8e9297;
+            --text-light: #ffffff; --border-color: #40444b; --border-input: #55595f;
+            --border-input-focus: #7a7d80; --primary-accent: #0d6efd;
+            --primary-accent-hover: #0b5ed7; --message-sent-bg: #0d6efd;
+            --message-received-bg: #3a3f44; --shadow-color: rgba(0, 0, 0, 0.3);
+            --icon-color: #8e9297; --icon-color-hover: #e0e0e0; --avatar-bg: #0d6efd;
+            --avatar-text: #ffffff; --input-bg: #3a3f44;
+            --select-arrow-fill: '%23b0b3b8';
+            --popup-bg: rgba(230, 230, 230, 0.85);
+            --popup-text: #1a1d21;
+            --modal-overlay-bg: rgba(0, 0, 0, 0.8);
+            --modal-content-bg: #2c2f33;
+            --paper-button-bg: #55595f; --paper-button-hover-bg: #40444b;
+            --like-button-bg: #28a745; --like-button-hover-bg: #218838;
+            --dislike-button-bg: #dc3545; --dislike-button-hover-bg: #c82333;
+            --retry-button-bg: #ffc107; --retry-button-hover-bg: #e0a800; --retry-button-text: #343a40;
+        }
+        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: var(--body-bg); margin: 0; padding: 20px; font-family: 'Poppins', sans-serif; box-sizing: border-box; transition: background-color 0.3s ease; }
+        .chat-container { width: 800px; max-width: 95%; height: 700px; background-color: var(--container-bg); border-radius: 12px; box-shadow: 0 8px 25px var(--shadow-color); display: flex; flex-direction: column; overflow: hidden; position: relative; transition: background-color 0.3s ease, box-shadow 0.3s ease; }
+        .chat-header { background-color: var(--header-footer-bg); padding: 15px 25px; border-bottom: 1px solid var(--border-color); font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; transition: background-color 0.3s ease, border-color 0.3s ease; }
+        .header-left { display: flex; align-items: center; color: var(--text-secondary); }
+        .avatar { width: 35px; height: 35px; background-color: var(--avatar-bg); color: var(--avatar-text); border-radius: 50%; margin-right: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9em; font-weight: 400; flex-shrink: 0; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .selector-container { display: flex; align-items: center; font-size: 0.9em; color: var(--text-muted); margin-left: 15px; }
+        .selector-container label { margin-right: 8px; font-weight: 400; }
+        #llm-select, #mode-select { padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border-input); background-color: var(--input-bg); color: var(--text-primary); font-family: 'Poppins', sans-serif; font-size: 0.95em; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="{var(--select-arrow-fill)}" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); background-repeat: no-repeat; background-position: right 8px center; background-size: 18px; padding-right: 30px; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
+        #theme-toggle, #reset-chat-btn { background: none; border: 1px solid var(--border-input); color: var(--text-muted); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 1.1em; line-height: 1; transition: color 0.3s ease, border-color 0.3s ease; }
+        #theme-toggle:hover, #reset-chat-btn:hover { color: var(--icon-color-hover); border-color: var(--border-input-focus); }
+        .chat-content { flex-grow: 1; padding: 25px; overflow-y: auto; background-color: var(--container-bg); transition: background-color 0.3s ease; }
+        .message { margin-bottom: 18px; padding: 12px 18px; border-radius: 20px; max-width: 80%; clear: both; word-wrap: break-word; line-height: 1.45; position: relative; transition: background-color 0.3s ease, color 0.3s ease, opacity 0.5s ease, transform 0.5s ease; opacity: 1; transform: scale(1); }
+        .message.sent { background-color: var(--message-sent-bg); color: var(--text-light); border-bottom-right-radius: 5px; float: right; }
+        .message.received { background-color: var(--message-received-bg); color: var(--text-primary); border-bottom-left-radius: 5px; float: left; }
+        .message.loading, .message.error { background-color: var(--message-received-bg); color: var(--text-muted); font-style: italic; border-bottom-left-radius: 5px; float: left; }
+        .chat-content-resetting .message { opacity: 0; transform: scale(0.8) translateX(-20px); }
+        .chat-content-resetting .message.sent { transform: scale(0.8) translateX(20px); }
+        .input-area { display: flex; align-items: center; padding: 15px 25px; border-top: 1px solid var(--border-color); background-color: var(--header-footer-bg); flex-shrink: 0; transition: background-color 0.3s ease, border-color 0.3s ease; }
+        .icon-btn { background: none; border: none; padding: 0; margin: 0 6px; cursor: pointer; font-size: 1.5em; color: var(--icon-color); transition: color 0.2s ease; display: inline-flex; align-items: center; }
+        .mic-btn.recording { color: red; animation: pulse 1.5s infinite ease-in-out; } @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .icon-btn:hover { color: var(--icon-color-hover); }
+        .icon-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+        #pdf-upload-input { display: none; }
+        .chat-input { flex-grow: 1; border: 1px solid var(--border-input); color: var(--text-primary); background-color: var(--input-bg); padding: 12px 18px; border-radius: 22px; font-size: 1em; outline: none; transition: border-color 0.2s ease, background-color 0.3s ease, color 0.3s ease; margin: 0 10px; }
+        .chat-input:focus { border-color: var(--border-input-focus); }
+        .send-btn { background-color: var(--primary-accent); color: white; width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: none; cursor: pointer; font-size: 1.2em; transition: background-color 0.2s ease; flex-shrink: 0; }
+        .send-btn:hover { background-color: var(--primary-accent-hover); }
+        .send-btn span { line-height: 1; display: inline-block; transform: translateX(1px); }
+        #popup-notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: var(--popup-bg); color: var(--popup-text); padding: 10px 20px; border-radius: 20px; font-size: 0.9em; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out; pointer-events: none; }
+        #popup-notification.show { opacity: 1; visibility: visible; }
+        .modal-overlay { display: none !important; /* Hide the modal overlay completely */ }
+        .modal-content { display: none !important; /* Hide the modal content completely */ }
+        .message button.paper-button { display: inline-block; width: auto; box-sizing: border-box; margin: 5px 5px 5px 0; padding: 8px 15px; cursor: pointer; background-color: var(--paper-button-bg); color: var(--text-light); border: none; border-radius: 6px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 0.9em; transition: background-color 0.2s ease; white-space: normal; line-height: 1.3; }
+        .message button.paper-button:hover { background-color: var(--paper-button-hover-bg); }
+        .message button.like-btn { background-color: var(--like-button-bg); }
+        .message button.like-btn:hover { background-color: var(--like-button-hover-bg); }
+        .message button.dislike-btn { background-color: var(--dislike-button-bg); }
+        .message button.dislike-btn:hover { background-color: var(--dislike-button-hover-bg); }
+        .message button.retry-btn { background-color: var(--retry-button-bg); color: var(--retry-button-text); }
+        .message button.retry-btn:hover { background-color: var(--retry-button-hover-bg); }
+        .hidden { display: none !important; }
+        .paper-selection-item { display: flex; align-items: center; margin: 8px 0; }
+        .paper-selection-item input[type="checkbox"] { margin-right: 12px; flex-shrink: 0; transform: scale(1.1); }
+        .paper-selection-item label { cursor: pointer; flex-grow: 1; font-size: 0.95em; line-height: 1.3; }
+        .paper-selection-actions-container { margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px; }
+        .paper-selection-actions-container button:last-child { margin-right: 0; }
+        .paper-interaction-buttons { margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px; }
+        #reset-chat-btn { font-size: 1.3em; padding: 5px 6px; }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-left"> <span class="avatar">R</span> <span>Chat with ResLLM</span> </div>
+            <div class="header-right">
+                <div class="selector-container">
+                    <label for="llm-select">Model:</label>
+                    <select name="llm" id="llm-select"> <option value="gemini-pro">Gemini Pro</option> </select>
+                </div>
+                <div class="selector-container">
+                    <label for="mode-select">Mode:</label>
+                    <select name="mode" id="mode-select">
+                        <option value="research_paper">Research Paper</option>
+                        <option value="pdf">PDF</option>
+                    </select>
+                </div>
+                <button id="reset-chat-btn" title="Reset Chat & Embeddings">🧹</button>
+                <button id="theme-toggle" title="Toggle theme">🌙</button>
+            </div>
+        </div>
+        <div class="chat-content" id="chat-content">
+            </div>
+        <div class="input-area">
+            <label for="pdf-upload-input" class="icon-btn" id="pdf-upload-label" title="Attach PDF file"><span>📎</span></label>
+            <input type="file" id="pdf-upload-input" accept=".pdf">
+            <button class="icon-btn mic-btn" id="mic-btn" title="Record Message"><span>🎙️</span></button>
+            <input type="text" class="chat-input" id="chat-input" placeholder="Type or record a message...">
+            <button class="send-btn" id="send-btn" title="Send message"><span>▶</span></button>
+        </div>
+    </div>
+
+    <div id="popup-notification"></div>
+
+    <script>
+        console.log("Script loading...");
+
+        // DOM Elements
+        const llmSelect = document.getElementById('llm-select');
+        const modeSelect = document.getElementById('mode-select');
+        const pdfUploadInput = document.getElementById('pdf-upload-input');
+        // Removed ytUrlBtn
+        const themeToggleButton = document.getElementById('theme-toggle');
+        const resetChatBtn = document.getElementById('reset-chat-btn');
+        const appBody = document.body;
+        const chatContent = document.getElementById('chat-content');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const pdfUploadLabel = document.getElementById('pdf-upload-label');
+        const micBtn = document.getElementById('mic-btn');
+        const popupNotification = document.getElementById('popup-notification');
+        // Removed YouTube modal elements
+        // const youtubeTranscriptModal = document.getElementById('youtube-transcript-modal');
+        // const modalCloseBtn = youtubeTranscriptModal.querySelector('.modal-close-btn');
+        // const modalVideoUrlInput = document.getElementById('modalVideoUrl');
+        // const modalLanguageSelect = document.getElementById('modalLanguage');
+        // const getTranscriptModalBtn = document.getElementById('getTranscriptModalBtn');
+        // const modalTranscriptArea = document.getElementById('modalTranscriptArea');
+        // const modalErrorMessageDiv = document.getElementById('modalErrorMessage');
+
+        // Endpoints
+        const API_BASE_URL = "http://127.0.0.1:8000";
+        const CHAT_ENDPOINT = `${API_BASE_URL}/chat`;
+        // Removed GET_TRANSCRIPT_ENDPOINT
+        const RESEARCH_ENDPOINT = `${API_BASE_URL}/research`;
+        const UPLOAD_PDF_ENDPOINT = `${API_BASE_URL}/upload_pdf`;
+        const GET_PAPERS_ENDPOINT = `${API_BASE_URL}/get_papers`;
+        const RESET_EMBEDDINGS_ENDPOINT = `${API_BASE_URL}/reset_embeddings`;
+        const RETRIEVE_CONTEXT_ENDPOINT = `${API_BASE_URL}/retrieve_contextual_data`;
+
+        // State
+        let currentVideoTranscript = null; // Still declared but will always be null
+        let currentPdfContext = null;
+        let currentPaperContext = null;
+        let chatHistory = [];
+        let popupTimeout = null;
+        let isVoiceRecording = false;
+        let recognition = null;
+        let lastResearchQuery = null;
+        const RESET_ANIMATION_DURATION = 500;
+
+        // --- Speech Recognition Setup ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                chatInput.value = chatInput.value ? chatInput.value + ' ' + transcript : transcript;
+                stopVoiceRecognition();
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                let errorMessage = "Speech recognition error.";
+                if (event.error === 'no-speech') {
+                    errorMessage = "No speech was detected. Please try again.";
+                } else if (event.error === 'audio-capture') {
+                    errorMessage = "Microphone problem. Please ensure it's enabled and working.";
+                } else if (event.error === 'not-allowed') {
+                    errorMessage = "Microphone access denied. Please allow microphone access in your browser settings.";
+                }
+                showPopup(errorMessage, 4000);
+                stopVoiceRecognition();
+            };
+
+            recognition.onend = () => {
+                if (isVoiceRecording) {
+                    stopVoiceRecognition();
+                }
+            };
+        } else {
+            console.warn("Speech Recognition API not supported in this browser.");
+            micBtn.disabled = true;
+            micBtn.title = "Speech input not supported by your browser";
+        }
+
+        function startVoiceRecognition() {
+            if (recognition && !isVoiceRecording) {
+                try {
+                    recognition.start();
+                    isVoiceRecording = true;
+                    micBtn.classList.add('recording');
+                    micBtn.innerHTML = '<span>🛑</span>';
+                    micBtn.title = "Stop Recording";
+                    showPopup("Listening...", 1500);
+                } catch (e) {
+                    console.error("Error starting speech recognition:", e);
+                    showPopup("Could not start voice recording.", 3000);
+                    isVoiceRecording = false;
+                }
+            }
+        }
+
+        function stopVoiceRecognition() {
+            if (recognition && isVoiceRecording) {
+                recognition.stop();
+            }
+            isVoiceRecording = false;
+            micBtn.classList.remove('recording');
+            micBtn.innerHTML = '<span>🎙️</span>';
+            micBtn.title = "Record Message";
+        }
+
+        micBtn.addEventListener('click', () => {
+            if (!SpeechRecognition) {
+                showPopup("Speech input not supported.", 3000);
+                return;
+            }
+            if (isVoiceRecording) {
+                stopVoiceRecognition();
+            } else {
+                startVoiceRecognition();
+            }
+        });
+
+
+        // --- Core Chat Functions ---
+        function showPopup(message, duration = 3000) {
+            if (popupTimeout) clearTimeout(popupTimeout);
+            popupNotification.textContent = message;
+            popupNotification.classList.add('show');
+            popupTimeout = setTimeout(() => {
+                popupNotification.classList.remove('show');
+                popupTimeout = null;
+            }, duration);
+        }
+
+        function addMessageToChat(text, type = 'received', isLoading = false, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', type);
+            const messageTextSpan = document.createElement('span');
+            if (isLoading) {
+                messageDiv.classList.add('loading');
+                messageTextSpan.textContent = text || 'Loading...';
+            } else if (isError) {
+                messageDiv.classList.add('error');
+                messageTextSpan.textContent = `Error: ${text}`;
+            } else if (typeof text === 'string') {
+                messageTextSpan.textContent = text;
+            }
+            messageDiv.appendChild(messageTextSpan);
+            chatContent.appendChild(messageDiv);
+            chatContent.scrollTop = chatContent.scrollHeight;
+            if (!isLoading && !isError && type !== 'internal' && typeof text === 'string') {
+                const role = (type === 'sent') ? 'user' : 'assistant';
+                if (!(chatHistory.length === 0 && role === 'assistant' && text.startsWith("Hi there I am"))) {
+                    chatHistory.push({ role: role, content: text });
+                }
+            }
+            return messageDiv;
+        }
+
+        function handleSendMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+            chatInput.value = '';
+            const currentMode = modeSelect.value;
+            addMessageToChat(query, 'sent');
+
+            if (currentMode === 'research_paper') {
+                if (!currentPaperContext) {
+                    sendResearchQuery(query);
+                } else {
+                    fetchContextAndSendQuery(query);
+                }
+            } else if (currentMode === 'pdf') {
+                if (!currentPdfContext) {
+                    addMessageToChat("Please upload a PDF first to chat about it.", 'received', false, true);
+                    return;
+                }
+                fetchContextAndSendQuery(query);
+            }
+            // Removed YouTube mode handling from here
+            else {
+                // If no specific mode context is applicable, send as general chat
+                sendChatQuery(query);
+            }
+        }
+
+        async function fetchContextAndSendQuery(originalQuery) {
+            const currentMode = modeSelect.value;
+            let descriptiveContext = null;
+
+            if (currentMode === 'research_paper' && currentPaperContext) {
+                descriptiveContext = currentPaperContext;
+            } else if (currentMode === 'pdf' && currentPdfContext) {
+                descriptiveContext = currentPdfContext;
+            } else {
+                // This else block should ideally not be hit if handleSendMessage routes correctly
+                console.log("No specific processed document context for retrieval, sending query directly for chat.");
+                sendChatQuery(originalQuery);
+                return;
+            }
+
+            const loadingRetrieveMsg = addMessageToChat('Retrieving relevant context...', 'received', true);
+            try {
+                const retrieveResponse = await fetch(RETRIEVE_CONTEXT_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: originalQuery, mode: currentMode })
+                });
+                loadingRetrieveMsg.remove();
+                if (!retrieveResponse.ok) {
+                    const errorData = await retrieveResponse.json();
+                    throw new Error(errorData.detail || `Failed to retrieve context (HTTP ${retrieveResponse.status})`);
+                }
+                const retrievedDocs = await retrieveResponse.json();
+                let retrievedContext = "";
+                if (retrievedDocs && retrievedDocs.length > 0) {
+                    retrievedContext = retrievedDocs.map(doc => `Source: ${doc.metadata?.source || 'Unknown'}\nContent: ${doc.page_content}`).join("\n\n---\n\n");
+                    console.log("Retrieved context for chat:", retrievedContext.substring(0, 300) + "...");
+                } else {
+                    console.log("No specific context retrieved from vector store for this query.");
+                    addMessageToChat("No specific document excerpts found for your query. I'll answer based on general knowledge or previous discussion.", "received");
+                }
+                sendChatQuery(originalQuery, retrievedContext || null);
+
+            } catch (error) {
+                loadingRetrieveMsg.remove();
+                addMessageToChat(`Error retrieving context: ${error.message}`, 'received', false, true);
+                console.error('Error retrieving context:', error);
+                addMessageToChat("Could not retrieve specific context. Trying to answer generally...", "received");
+                sendChatQuery(originalQuery, null);
+            }
+        }
+
+        async function sendChatQuery(query, explicitContext = null) {
+            const loadingMsg = addMessageToChat('Thinking...', 'received', true);
+            const currentMode = modeSelect.value;
+            const currentModelName = llmSelect.value;
+            let contextForLLM = explicitContext;
+
+            // Removed YouTube context handling from here, it's now only explicitContext from retrieval
+            
+            try {
+                const response = await fetch(CHAT_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: query,
+                        context: contextForLLM, // contextForLLM will be explicitContext or null
+                        mode: currentMode,
+                        history: chatHistory.slice(-20),
+                        model_name: currentModelName
+                    })
+                });
+                loadingMsg.remove();
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `Chat API Error (HTTP ${response.status})`);
+                }
+                const data = await response.json();
+                addMessageToChat(data.response, 'received');
+            } catch (error) {
+                loadingMsg.remove();
+                addMessageToChat(`Chat Error: ${error.message}`, 'received', false, true);
+                console.error('Chat Error:', error);
+            }
+        }
+
+        async function sendResearchQuery(query) {
+            lastResearchQuery = query;
+            const loadingMsg = addMessageToChat('Finding research paper titles...', 'received', true);
+            try {
+                const response = await fetch(RESEARCH_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                loadingMsg.remove();
+                if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.detail || `HTTP error ${response.status}`); }
+                const data = await response.json();
+                if (data && Array.isArray(data.titles) && data.titles.length > 0) {
+                    displayPaperSelection(data.titles, query);
+                } else {
+                    addMessageToChat("No relevant paper titles found for your topic.", 'received');
+                }
+            } catch (error) {
+                loadingMsg.remove(); addMessageToChat(`Error finding paper titles: ${error.message}`, 'received', false, true);
+                console.error('Error finding paper titles:', error);
+            }
+        }
+
+        async function handlePaperSubmission(selectedTitles) {
+            if (!selectedTitles || selectedTitles.length === 0) { showPopup("No papers selected.", 2500); return; }
+            addMessageToChat(`Requesting processing for: ${selectedTitles.join(', ')}`, 'sent');
+            const loadingMsg = addMessageToChat('Processing and embedding selected papers...', 'received', true);
+            pdfUploadLabel.disabled = true; // Disable PDF upload while processing papers
+            pdfUploadLabel.style.opacity = '0.5';
+            try {
+                const response = await fetch(GET_PAPERS_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ papers: selectedTitles })
+                });
+                loadingMsg.remove();
+                const responseData = await response.json();
+                if (response.ok && responseData.message) {
+                    addMessageToChat(responseData.message, 'received');
+                    currentPaperContext = `Processed research papers: ${selectedTitles.join(', ')}.`;
+                    currentVideoTranscript = null; currentPdfContext = null;
+                    modeSelect.value = 'research_paper';
+                    addMessageToChat("Embeddings complete. You can now ask questions about the selected papers.", "received");
+                } else { throw new Error(responseData.detail || "Failed to process selected papers."); }
+            } catch (error) {
+                loadingMsg.remove(); addMessageToChat(`Error processing papers: ${error.message}`, 'received', false, true);
+                console.error('Error processing papers:', error);
+            } finally {
+                pdfUploadLabel.disabled = false; pdfUploadLabel.style.opacity = '1';
+            }
+        }
+
+        function displayPaperSelection(titles, originalQuery) {
+            const messageDiv = document.createElement('div'); messageDiv.classList.add('message', 'received');
+            const mainContentDiv = document.createElement('div');
+            if (!Array.isArray(titles) || titles.length === 0) {
+                const noPapersSpan = document.createElement('span'); noPapersSpan.textContent = "No relevant paper titles found.";
+                noPapersSpan.style.display = 'block'; noPapersSpan.style.marginBottom = '10px';
+                mainContentDiv.appendChild(noPapersSpan);
+            } else {
+                const instructionSpan = document.createElement('span'); instructionSpan.textContent = "Select papers to process & embed:";
+                instructionSpan.style.display = 'block'; instructionSpan.style.marginBottom = '10px';
+                mainContentDiv.appendChild(instructionSpan);
+                const form = document.createElement('form'); form.style.marginBottom = '10px';
+                const paperCheckboxes = [];
+                titles.forEach((title, index) => {
+                    const paperDiv = document.createElement('div'); paperDiv.classList.add('paper-selection-item');
+                    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.id = `paper-checkbox-${Date.now()}-${index}`; checkbox.dataset.title = title;
+                    const label = document.createElement('label'); label.htmlFor = checkbox.id; label.textContent = title;
+                    paperDiv.appendChild(checkbox); paperDiv.appendChild(label); form.appendChild(paperDiv); paperCheckboxes.push(checkbox);
+                });
+                mainContentDiv.appendChild(form);
+                const actionsContainer = document.createElement('div'); actionsContainer.classList.add('paper-selection-actions-container');
+                const selectAllButton = document.createElement('button'); selectAllButton.textContent = "Select All"; selectAllButton.type = 'button'; selectAllButton.classList.add('paper-button');
+                let allSelectedState = false;
+                selectAllButton.onclick = () => { allSelectedState = !allSelectedState; paperCheckboxes.forEach(cb => cb.checked = allSelectedState); selectAllButton.textContent = allSelectedState ? "Deselect All" : "Select All"; };
+                actionsContainer.appendChild(selectAllButton);
+                const submitSelectedButton = document.createElement('button'); submitSelectedButton.textContent = "Process Selected"; submitSelectedButton.type = 'button'; submitSelectedButton.classList.add('paper-button'); submitSelectedButton.style.backgroundColor = 'var(--primary-accent)';
+                submitSelectedButton.onclick = () => {
+                    const selectedTitles = paperCheckboxes.filter(cb => cb.checked).map(cb => cb.dataset.title);
+                    if (selectedTitles.length === 0) { showPopup("Please select papers.", 2500); return; }
+                    handlePaperSubmission(selectedTitles);
+                    mainContentDiv.querySelectorAll('button, input').forEach(el => el.disabled = true); mainContentDiv.style.opacity = '0.7';
+                };
+                actionsContainer.appendChild(submitSelectedButton); mainContentDiv.appendChild(actionsContainer);
+            }
+            messageDiv.appendChild(mainContentDiv);
+            const interactionButtonsDiv = document.createElement('div'); interactionButtonsDiv.classList.add('paper-interaction-buttons');
+            const retryButton = document.createElement('button'); retryButton.textContent = "Retry Title Search 🔁"; retryButton.type = 'button'; retryButton.classList.add('paper-button', 'retry-btn');
+            retryButton.onclick = () => {
+                const queryToRetry = originalQuery || lastResearchQuery;
+                if (queryToRetry) { addMessageToChat(`Retrying title search: "${queryToRetry}"`, 'sent'); sendResearchQuery(queryToRetry); messageDiv.style.opacity = '0.6'; messageDiv.querySelectorAll('button, input').forEach(el => el.disabled = true); }
+                else { showPopup("No query to retry.", 2500); }
+            };
+            interactionButtonsDiv.appendChild(retryButton);
+            const likeButton = document.createElement('button'); likeButton.textContent = "Like Titles 👍"; likeButton.type = 'button'; likeButton.classList.add('paper-button', 'like-btn');
+            likeButton.onclick = () => { showPopup("Thanks for title feedback!"); likeButton.style.border = '2px solid var(--primary-accent)'; dislikeButton.style.border = 'none'; };
+            interactionButtonsDiv.appendChild(likeButton);
+            const dislikeButton = document.createElement('button'); dislikeButton.textContent = "Dislike Titles 👎"; dislikeButton.type = 'button'; dislikeButton.classList.add('paper-button', 'dislike-btn');
+            dislikeButton.onclick = () => { showPopup("Thanks, we'll improve titles."); dislikeButton.style.border = '2px solid var(--primary-accent)'; likeButton.style.border = 'none'; };
+            interactionButtonsDiv.appendChild(dislikeButton);
+            messageDiv.appendChild(interactionButtonsDiv); chatContent.appendChild(messageDiv); chatContent.scrollTop = chatContent.scrollHeight;
+        }
+
+        const applyTheme = (theme) => { if (theme === 'dark') { appBody.classList.add('dark-mode'); themeToggleButton.textContent = '☀️'; } else { appBody.classList.remove('dark-mode'); themeToggleButton.textContent = '🌙'; } };
+        const toggleTheme = () => { const currentTheme = appBody.classList.contains('dark-mode') ? 'light' : 'dark'; applyTheme(currentTheme); localStorage.setItem('chatTheme', currentTheme); };
+        
+        function updateInitialMessage(isReset = false) {
+            const selectedLLMText = llmSelect.options[llmSelect.selectedIndex].text;
+            const initialMsgText = `Hi there I am ${selectedLLMText}. How can I help you today?`;
+            if (isReset || chatContent.children.length === 0) {
+                const msgDiv = addMessageToChat(initialMsgText, 'received');
+                if (msgDiv) msgDiv.id = 'initial-llm-message'; 
+            }
+            chatHistory = [ { role: 'assistant', content: initialMsgText } ];
+        }
+
+        async function resetChat() {
+            chatContent.classList.add('chat-content-resetting');
+            resetChatBtn.disabled = true;
+            let contextTypeToReset = "all";
+            
+            try {
+                console.log(`Requesting reset for context type: ${contextTypeToReset}`);
+                const response = await fetch(RESET_EMBEDDINGS_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ context_type: contextTypeToReset })
+                });
+                const data = await response.json();
+                if (response.ok) showPopup(data.message || `Embeddings reset.`, 2500);
+                else showPopup(`Error resetting embeddings: ${data.detail || 'Unknown error'}`, 3000);
+            } catch (error) {
+                showPopup(`Failed to call reset embeddings API: ${error.message}`, 3000);
+                console.error("Reset Embeddings API call failed:", error);
+            }
+            
+            setTimeout(() => {
+                chatContent.innerHTML = '';
+                currentVideoTranscript = null; // Removed YouTube context clearing
+                currentPdfContext = null; lastResearchQuery = null; currentPaperContext = null;
+                updateInitialMessage(true);
+                showPopup("Chat has been reset.", 2000);
+                chatContent.classList.remove('chat-content-resetting');
+                resetChatBtn.disabled = false;
+            }, RESET_ANIMATION_DURATION);
+        }
+
+        async function handlePdfUpload(file) {
+            if (!file || file.type !== "application/pdf") { addMessageToChat("Please select a valid PDF.", 'received', false, true); return; }
+            const formData = new FormData(); formData.append("file", file);
+            showPopup(`Processing ${file.name}...`);
+            const loadingMsg = addMessageToChat(`Processing ${file.name}...`, 'received', true);
+            pdfUploadLabel.disabled = true; pdfUploadLabel.style.opacity = '0.5';
+            try {
+                const response = await fetch(UPLOAD_PDF_ENDPOINT, { method: 'POST', body: formData });
+                loadingMsg.remove();
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || `HTTP error ${response.status}`);
+                showPopup(data.message || `Processed ${data.filename}`);
+                currentPdfContext = `Processed PDF: ${data.filename}. You can now ask questions about it.`; 
+                currentVideoTranscript = null; currentPaperContext = null; 
+                addMessageToChat(`PDF "${data.filename}" processed and ready. Ask about it.`, 'received');
+                modeSelect.value = 'pdf';
+            } catch (error) {
+                loadingMsg.remove(); addMessageToChat(`PDF Error: ${error.message}`, 'received', false, true); console.error('PDF Error:', error);
+            } finally {
+                pdfUploadLabel.disabled = false; pdfUploadLabel.style.opacity = '1'; pdfUploadInput.value = '';
+            }
+        }
+        
+        // --- Event Listeners ---
+        sendBtn.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } });
+        llmSelect.addEventListener('change', () => { resetChat(); });
+        themeToggleButton.addEventListener('click', toggleTheme);
+        resetChatBtn.addEventListener('click', resetChat);
+        // Removed ytUrlBtn listener
+        // Removed modal close listeners as modal is removed
+        // Removed getTranscriptModalBtn listener as modal is removed
+        pdfUploadInput.addEventListener('change', (e) => handlePdfUpload(e.target.files[0]));
+        // Mic button listener is set up with STT init
+
+        modeSelect.addEventListener('change', () => {
+            const newMode = modeSelect.value;
+            console.log(`Mode changed to: ${newMode}. Resetting chat and embeddings.`);
+            resetChat(); 
+            if (newMode === 'research_paper') {
+                addMessageToChat("Research Paper mode. Enter a topic to find papers.", "received");
+            } else if (newMode === 'pdf') {
+                addMessageToChat("PDF mode. Upload a PDF to begin.", "received");
+            }
+            // Removed YouTube mode message
+        });
+
+        // --- Initialization ---
+        const savedTheme = localStorage.getItem('chatTheme') || 'light';
+        applyTheme(savedTheme);
+        updateInitialMessage(true);
+        console.log("Script loaded and initialized.");
+
+        // Removed handleGetTranscript function as YouTube functionality is removed
+        // async function handleGetTranscript() { /* ... */ }
+    </script>
+</body>
+</html>
