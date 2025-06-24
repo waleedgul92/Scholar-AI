@@ -121,3 +121,5 @@ Scholar-AI is a research assistant application designed to streamline the proces
 * User accounts and persistent storage of processed documents per user.
 * Enhanced UI/UX for managing and interacting with documents.
 * Support for other LLMs.
+
+## Video Demo
